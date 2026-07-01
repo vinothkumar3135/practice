@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    tools {
+        nodejs 'NodeJS-24'
+    }
+
+    environment {
+        S3_BUCKET = 'eflow-instructorweb-vinothkumar'
+        CLOUDFRONT_DISTRIBUTION_ID = 'E2CX5URT2Q5O31'
+        AWS_DEFAULT_REGION = 'ap-south-1'
+    }
+
+    stages {
+
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main',
+                    credentialsId: 'github-pat',
+                    url: 'https://github.com/cloudhostingky-alt/E-Flow-InstructorWeb.git'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+
+        stage('Build Application') {
+            steps {
+                sh 'npm run build'
+            }
+        }
+
+        stage('Deploy to S3') {
+            steps {
+                sh 'aws s3 sync dist/ s3://$S3_BUCKET --delete'
+            }
+        }
+
+        stage('Invalidate CloudFront') {
+            steps {
+                sh '''
+                aws cloudfront create-invalidation \
+                --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
+                --paths "/*"
+                '''
+            }
+        }
+    }
+}
