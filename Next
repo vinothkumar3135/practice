@@ -4,3 +4,8 @@ sudo rm -f /usr/share/keyrings/jenkins-keyring.gpg
 
 curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gp
 echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list
+sudo mkdir -p /var/lib/jenkins/.aws
+sudo cp ~/.aws/credentials /var/lib/jenkins/.aws/
+sudo cp ~/.aws/config /var/lib/jenkins/.aws/
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.aws
+sudo systemctl restart jenkins
