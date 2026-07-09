@@ -4,3 +4,4 @@ services:
     container_name: node-app
     ports:
       - "3000:3000"
+/snap/bin/docker tag node-docker-sample vinothkumar31/node-docker-sample:latest
