@@ -1,0 +1,43 @@
+
+resource "aws_vpc" "aws_vpc_1" {
+  cidr_block       = "10.0.0.0/16"
+  instance_tenancy = "default"
+
+  tags = {
+    Name = "vpc-terra"
+ 
+  }
+}
+
+resource "aws_subnet" "public-sub" {
+  vpc_id     = aws_vpc.aws_vpc_1.id
+  cidr_block = "10.0.1.0/24"
+
+  tags = {
+    Name = "sub.aws"
+  }
+}
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.aws_vpc_1.id
+
+  tags = {
+    Name = "gateway"
+  }
+}
+
+resource "aws_route_table" "my-route-table" {
+  vpc_id =aws_vpc.aws_vpc_1.id
+
+  route {
+    cidr_block = "10.0.1.0/24"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "my-route-aws"
+  }
+}
+resource "aws_route_table_association" "route-asso" {
+  subnet_id      = aws_subnet.public-sub.id
+  route_table_id = aws_route_table.my-route-table.id
+}
