@@ -22,3 +22,6 @@ resource "aws_subnet" "public_subnet" {
     Name = "terraform-public-subnet"
   }
 }
+aws iam simulate-principal-policy \
+  --policy-source-arn arn:aws:iam::059964303641:user/jenkins-user \
+  --action-names ec2:CreateVpc
