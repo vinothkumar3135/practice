@@ -1,0 +1,92 @@
+resource "aws_security_group" "web_sg" {
+  name        = "web-security-group"
+  description = "Allow SSH and HTTP"
+  vpc_id      = aws_vpc.aws_vpc_1.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "web-sg"
+  }
+}
+
+resource "aws_instance" "ec2" {
+  ami                    = "<AMI_ID>"
+  instance_type          = "t2.micro"
+  subnet_id              = aws_subnet.public-sub.id
+  vpc_security_group_ids = [aws_security_group.web_sg.id]
+
+  tags = {
+    Name = "terraform-ec2"
+  }
+}
+
+aws ec2 describe-images \
+--owners amazon \
+--filters "Name=name,Values=al2023-ami-*" \
+--query 'Images[0].ImageId'
+
+resource "aws_s3_bucket" "bucket" {
+  bucket = "terraform-sample-bucket-123456"
+
+  tags = {
+    Name = "terraform-bucket"
+  }
+}
+
+
+
+resource "aws_cloudfront_distribution" "cdn" {
+
+  origin {
+    domain_name = aws_s3_bucket.bucket.bucket_regional_domain_name
+    origin_id   = "S3Origin"
+  }
+
+  enabled = true
+
+  default_cache_behavior {
+    allowed_methods  = ["GET", "HEAD"]
+    cached_methods   = ["GET", "HEAD"]
+    target_origin_id = "S3Origin"
+
+    viewer_protocol_policy = "redirect-to-https"
+
+    forwarded_values {
+      query_string = false
+
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+}
