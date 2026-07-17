@@ -25,3 +25,11 @@ resource "aws_subnet" "public_subnet" {
 aws iam simulate-principal-policy \
   --policy-source-arn arn:aws:iam::059964303641:user/jenkins-user \
   --action-names ec2:CreateVpc
+
+
+Subject
+Apology for Missing Jibble Break Entry
+Dear Sir/Madam,
+I apologize for forgetting to mark my break in Jibble before going out. It was a mistake from my side.
+I will make sure this does not happen again.
+Sorry for the inconvenience.
