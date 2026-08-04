@@ -1,0 +1,94 @@
+---
+- name: Install Docker
+  hosts: web
+  become: yes
+
+  tasks:
+    - name: Apt update
+      apt:
+        update_cache: yes
+
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
+
+    - name: Start Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+#docker compose 
+---
+- name: Install Docker Compose
+  hosts: web
+  become: yes
+
+  tasks:
+    - name: Install Docker Compose
+      apt:
+        name: docker-compose
+        state: present
+        update_cache: yes
+
+    - name: Verify Docker Compose installation
+      command: docker-compose --version
+      register: compose_version
+
+    - name: Display Docker Compose version
+      debug:
+        var: compose_version.stdout
+
+#jenkins
+---
+- name: Install Jenkins
+  hosts: web
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Java
+      apt:
+        name: openjdk-21-jdk
+        state: present
+
+    - name: Download Jenkins GPG key
+      get_url:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+
+    - name: Add Jenkins repository
+      apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+        state: present
+        filename: jenkins
+
+    - name: Update apt cache after adding Jenkins repo
+      apt:
+        update_cache: yes
+
+    - name: Install Jenkins
+      apt:
+        name: jenkins
+        state: present
+
+    - name: Enable Jenkins
+      service:
+        name: jenkins
+        enabled: yes
+
+    - name: Start Jenkins
+      service:
+        name: jenkins
+        state: started
+
+    - name: Check Jenkins status
+      service_facts:
+
+    - name: Display Jenkins service state
+      debug:
+        var: ansible_facts.services['jenkins.service'].state
