@@ -92,3 +92,10 @@
     - name: Display Jenkins service state
       debug:
         var: ansible_facts.services['jenkins.service'].state
+
+#######
+- name: Download Jenkins repository key
+  ansible.builtin.get_url:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    dest: /usr/share/keyrings/jenkins-keyring.asc
+    mode: '0644'
