@@ -152,3 +152,16 @@
       service:
         name: jenkins
         state: started
+
+
+###
+- name: Add Jenkins repository
+  copy:
+    dest: /etc/apt/sources.list.d/jenkins.list
+    content: |
+      deb [signed-by=/etc/apt/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/
+    mode: '0644'
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
