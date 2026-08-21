@@ -1,0 +1,68 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = 'YOUR_DOCKERHUB_USERNAME/mern-backend'
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        stage('Clone') {
+            steps {
+                git branch: 'main',
+                    credentialsId: 'Github-pat',
+                    url: 'YOUR-BACKEND-GITHUB-REPO'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm ci'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    docker build \
+                        -t $IMAGE_NAME:$IMAGE_TAG \
+                        -t $IMAGE_NAME:latest \
+                        .
+                '''
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        echo "$DOCKER_PASSWORD" | docker login \
+                            -u "$DOCKER_USERNAME" \
+                            --password-stdin
+
+                        docker push $IMAGE_NAME:$IMAGE_TAG
+                        docker push $IMAGE_NAME:latest
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh '''
+                    kubectl set image deployment/mern-backend \
+                        mern-backend=$IMAGE_NAME:$IMAGE_TAG
+
+                    kubectl rollout status deployment/mern-backend
+                '''
+            }
+        }
+    }
+}
