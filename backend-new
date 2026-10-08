@@ -1,0 +1,73 @@
+peline {
+    agent any
+
+    stages {
+        stage('Deploy to EC2') {
+            steps {
+                sshagent(['ssh-key']) {
+
+                    withCredentials([
+                        file(
+                            credentialsId: 'cred-id env',
+                            variable: 'ENV_FILE'
+                        )
+                    ]) {
+
+                        sh '''
+                            set -e
+
+                            # Copy environment file to Jenkins workspace temp location
+                            cp "$ENV_FILE" /tmp/staged.env
+
+                            # Upload environment file to EC2
+                            scp -o StrictHostKeyChecking=no \
+                                /tmp/staged.env \
+                                ubuntu@15.252.24.250:/home/ubuntu/.env.tmp
+
+                            # Remove temporary file from Jenkins
+                            rm -f /tmp/staged.env
+
+                            # Deploy application on EC2
+                            ssh -A -o StrictHostKeyChecking=no ubuntu@15.252.24.250 << 'REMOTE_COMMANDS'
+
+                                set -e
+
+                                # Remove previous source code
+                                rm -rf /home/ubuntu/Backend
+
+                                # Clone name branch
+                                git clone -b name \
+                                    git@github.com: github cred \
+                                    /home/ubuntu/Backend
+
+                                # Move into backend directory
+                                cd /home/ubuntu/Backend
+
+                                # Install environment file
+                                mv /home/ubuntu/.env.tmp .env
+
+                                # Build latest Docker image
+                                docker build -t name-backend .
+
+                                # Stop old container if running
+                                docker stop name || true
+
+                                # Remove old container
+                                docker rm name || true
+
+                                # Start new container
+                                docker run -d \
+                                    -p 8000:8000 \
+                                    --env-file .env \
+                                    --network my-app-network \
+                                    --name  container name
+                                   
+
+                            REMOTE_COMMANDS
+                        '''
+                    }
+                }
+            }
+        }
+    }
+}
