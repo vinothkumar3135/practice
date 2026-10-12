@@ -1,0 +1,73 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Deploy to EC2') {
+            steps {
+                sshagent(['infoez-ssh']) {
+
+                    withCredentials([
+                        file(
+                            credentialsId: 'infoez-backend-env',
+                            variable: 'ENV_FILE'
+                        )
+                    ]) {
+
+                        sh '''
+                            set -e
+
+                            # Copy environment file to Jenkins workspace temp location
+                            cp "$ENV_FILE" /tmp/staged.env
+
+                            # Upload environment file to EC2
+                            scp -o StrictHostKeyChecking=no \
+                                /tmp/staged.env \
+                                ubuntu@15.252.24.250:/home/ubuntu/.env.tmp
+
+                            # Remove temporary file from Jenkins
+                            rm -f /tmp/staged.env
+
+                            # Deploy application on EC2
+                            ssh -A -o StrictHostKeyChecking=no ubuntu@15.252.24.250 << 'REMOTE_COMMANDS'
+
+                                set -e
+
+                                # Remove previous source code
+                                rm -rf /home/ubuntu/Backend
+
+                                # Clone vinodh-kumar branch
+                                git clone -b vinodh-kumar \
+                                    git@github.com:Infoez-kiaq/Backend.git \
+                                    /home/ubuntu/Backend
+
+                                # Move into backend directory
+                                cd /home/ubuntu/Backend
+
+                                # Install environment file
+                                mv /home/ubuntu/.env.tmp .env
+
+                                # Build latest Docker image
+                                docker build -t inf-backend .
+
+                                # Stop old container if running
+                                docker stop infoez || true
+
+                                # Remove old container
+                                docker rm infoez || true
+
+                                # Start new container
+                                docker run -d \
+                                    -p 8000:8000 \
+                                    --env-file .env \
+                                    --network my-app-network \
+                                    --name infoez \
+                                    inf-backend
+
+                            REMOTE_COMMANDS
+                        '''
+                    }
+                }
+            }
+        }
+    }
+}
