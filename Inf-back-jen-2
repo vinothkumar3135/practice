@@ -1,0 +1,53 @@
+pipeline {
+    agent any
+
+    environment {
+        // ---- Edit these only ----
+        SSH_CRED_ID = 'infoez-ssh'          // Jenkins credential: SSH Username with private key
+        ENV_CRED_ID = 'infoez-backend-env'  // Jenkins credential: Secret file (.env)
+        EC2_HOST    = 'ubuntu@15.252.24.250'
+        BRANCH      = 'vinodh-kumar'
+        // Separate from your TL's deployment, so it won't overwrite theirs
+        APP_DIR     = '/home/ubuntu/Backend-vinodh'
+        IMAGE_NAME  = 'inf-backend-vinodh'
+        CONTAINER   = 'infoez-vinodh'
+        HOST_PORT   = '8001'
+    }
+
+    stages {
+        stage('Verify env file') {
+            steps {
+                withCredentials([file(credentialsId: env.ENV_CRED_ID, variable: 'ENV_FILE')]) {
+                    sh 'test -s "$ENV_FILE" && echo "Env file OK"'
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            steps {
+                sshagent([env.SSH_CRED_ID]) {
+                    withCredentials([file(credentialsId: env.ENV_CRED_ID, variable: 'ENV_FILE')]) {
+                        sh '''
+set -e
+scp -o StrictHostKeyChecking=no "$ENV_FILE" $EC2_HOST:/home/ubuntu/.env.vinodh.tmp
+
+ssh -A -o StrictHostKeyChecking=no $EC2_HOST \
+  "APP_DIR=$APP_DIR BRANCH=$BRANCH IMAGE_NAME=$IMAGE_NAME CONTAINER=$CONTAINER HOST_PORT=$HOST_PORT bash -s" << 'REMOTE_COMMANDS'
+set -e
+export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new"
+rm -rf "$APP_DIR"
+git clone -b "$BRANCH" git@github.com:Infoez-kiaq/Backend.git "$APP_DIR"
+cd "$APP_DIR"
+mv /home/ubuntu/.env.vinodh.tmp .env
+docker build -t "$IMAGE_NAME" .
+docker stop "$CONTAINER" || true
+docker rm "$CONTAINER" || true
+docker run -d -p "$HOST_PORT":8000 --env-file .env --network my-app-network --name "$CONTAINER" "$IMAGE_NAME"
+REMOTE_COMMANDS
+'''
+                    }
+                }
+            }
+        }
+    }
+}
