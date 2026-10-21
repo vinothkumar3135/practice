@@ -8,3 +8,13 @@ else
     git checkout -B "$BRANCH" "origin/$BRANCH"
     git reset --hard "origin/$BRANCH"
 fi
+
+
+sshagent([env.SSH_CRED_ID]) {
+    sh '''
+        ssh-add -l
+        ssh -o BatchMode=yes \
+            -o StrictHostKeyChecking=accept-new \
+            ubuntu@184.192.216.64 "whoami"
+    '''
+}
