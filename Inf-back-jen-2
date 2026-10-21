@@ -2,14 +2,14 @@ pipeline {
     agent any
 
     environment {
-        SSH_CRED_ID = 'infoez-ssh'          // Jenkins credential: SSH Username with private key
-        ENV_CRED_ID = 'infoez-backend-env'  // Jenkins credential: Secret file (.env)
-        EC2_HOST    = 'ubuntu@13.235.70.132'
+        SSH_CRED_ID = 'Infoez-Pem-Key'          // Jenkins credential: SSH Username with private key
+        ENV_CRED_ID = 'Infoez-Backend-Env'  // Jenkins credential: Secret file (.env)
+        EC2_HOST    = 'ubuntu@184.192.216.64'
         BRANCH      = 'vinodh-kumar'
         APP_DIR     = '/home/ubuntu/Backend-vinodh'
         IMAGE_NAME  = 'inf-backend'
         CONTAINER   = 'infoez'
-        HOST_PORT   = '8001'
+        HOST_PORT   = '8000'
     }
 
     stages {
