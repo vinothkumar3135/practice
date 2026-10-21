@@ -18,3 +18,25 @@ sshagent([env.SSH_CRED_ID]) {
             ubuntu@184.192.216.64 "whoami"
     '''
 }
+
+
+
+pipeline {
+    agent any
+
+    stages {
+        stage('Test EC2 SSH') {
+            steps {
+                sshagent(credentials: ['Infoez-Pem-Key']) {
+                    sh '''
+                        set -e
+                        ssh-add -l
+                        ssh -o BatchMode=yes \
+                            -o StrictHostKeyChecking=accept-new \
+                            ubuntu@184.192.216.64 "whoami"
+                    '''
+                }
+            }
+        }
+    }
+}
