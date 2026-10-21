@@ -1,0 +1,9 @@
+sudo docker run -d \
+  --name localconnect-justdial \
+  --network my-app-network \
+  -v mongo-data:/data/db \
+  -e MONGO_INITDB_ROOT_USERNAME=admin \
+  -e MONGO_INITDB_ROOT_PASSWORD='YOUR_STRONG_PASSWORD' \
+  -p 127.0.0.1:27017:27017 \
+  --restart unless-stopped \
+  mongo:7
