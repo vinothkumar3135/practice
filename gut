@@ -1,0 +1,10 @@
+if [ ! -d "$APP_DIR/.git" ]; then
+    git clone --branch "$BRANCH" --single-branch "$REPO_URL" "$APP_DIR"
+else
+    cd "$APP_DIR"
+
+    git remote set-url origin "$REPO_URL"
+    git fetch origin "$BRANCH"
+    git checkout -B "$BRANCH" "origin/$BRANCH"
+    git reset --hard "origin/$BRANCH"
+fi
