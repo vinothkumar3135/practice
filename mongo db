@@ -7,3 +7,10 @@ sudo docker run -d \
   -p 127.0.0.1:27017:27017 \
   --restart unless-stopped \
   mongo:7
+
+
+sudo docker exec localconnect-justdial mongosh \
+  --username admin \
+  --password 'YOUR_STRONG_PASSWORD' \
+  --authenticationDatabase admin \
+  --eval 'db.runCommand({ ping: 1 })'
