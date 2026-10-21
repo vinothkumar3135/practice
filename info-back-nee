@@ -1,0 +1,95 @@
+
+pipeline {
+    agent any
+
+    environment {
+        SSH_CRED_ID = 'Infoez-Pem-Key'
+        ENV_CRED_ID = 'Infoez-Backend-Env'
+        EC2_HOST    = 'ubuntu@184.192.216.64'
+        BRANCH      = 'vinodh-kumar'
+        REPO_URL    = 'git@github.com:Infoez-kiaq/Backend.git'
+        APP_DIR     = '/home/ubuntu/Backend-vinodh'
+        IMAGE_NAME  = 'inf-backend'
+        CONTAINER   = 'infoez'
+        HOST_PORT   = '8000'
+    }
+
+    stages {
+        stage('Verify credentials') {
+            steps {
+                withCredentials([
+                    file(credentialsId: env.ENV_CRED_ID, variable: 'ENV_FILE')
+                ]) {
+                    sh 'test -s "$ENV_FILE"'
+                }
+            }
+        }
+
+        stage('Deploy backend to EC2') {
+            steps {
+                sshagent([env.SSH_CRED_ID]) {
+                    withCredentials([
+                        file(credentialsId: env.ENV_CRED_ID, variable: 'ENV_FILE')
+                    ]) {
+                        sh '''
+                            set -eu
+
+                            scp -o StrictHostKeyChecking=accept-new \
+                                "$ENV_FILE" "$EC2_HOST:/home/ubuntu/.env.vinodh.tmp"
+
+                            ssh -o StrictHostKeyChecking=accept-new "$EC2_HOST" \
+                                "APP_DIR='$APP_DIR' BRANCH='$BRANCH' REPO_URL='$REPO_URL' IMAGE_NAME='$IMAGE_NAME' CONTAINER='$CONTAINER' HOST_PORT='$HOST_PORT' bash -s" <<'REMOTE'
+set -eu
+
+export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=accept-new"
+
+# Verify prerequisites before changing the running application.
+docker network inspect my-app-network >/dev/null
+docker ps --filter name=localconnect-justdial --filter status=running | grep -q localconnect-justdial
+
+# Prepare source code.
+if [ ! -d "$APP_DIR/.git" ]; then
+    git clone --branch "$BRANCH" --single-branch "$REPO_URL" "$APP_DIR"
+else
+    cd "$APP_DIR"
+    git fetch origin "$BRANCH"
+    git checkout "$BRANCH"
+    git reset --hard "origin/$BRANCH"
+fi
+
+cd "$APP_DIR"
+mv /home/ubuntu/.env.vinodh.tmp .env
+
+# Build the image.
+docker build -t "$IMAGE_NAME" .
+
+# Start the new container.
+docker rm -f "$CONTAINER" 2>/dev/null || true
+docker run -d \
+    --name "$CONTAINER" \
+    --restart unless-stopped \
+    --network my-app-network \
+    --env-file .env \
+    -p "$HOST_PORT:8000" \
+    "$IMAGE_NAME"
+
+# Verify the application health endpoint.
+for i in $(seq 1 30); do
+    if curl --fail --silent http://127.0.0.1:8000/health >/dev/null; then
+        echo "Backend health check passed"
+        exit 0
+    fi
+    sleep 2
+done
+
+docker logs --tail 100 "$CONTAINER"
+echo "Backend health check failed"
+exit 1
+REMOTE
+                        '''
+                    }
+                }
+            }
+        }
+    }
+}
